@@ -1,287 +1,236 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { ArrowDown, ArrowUpRight, ChevronLeft, ChevronRight, Clapperboard, ListMusic, Menu, Pause, Play, Volume2, VolumeX, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type ReactNode, type RefObject } from 'react'
+import {
+  ArrowDown, ArrowLeft, ArrowRight, BarChart3, Bell, Bookmark, Check, ChevronDown, ChevronLeft,
+  ChevronRight, Clapperboard, Clock3, CloudUpload, Command, Download, Eye, FileArchive, FolderHeart,
+  Grid2X2, Heart, Home, Layers3, ListFilter, ListMusic, Menu, MoreHorizontal, Pause, Play, Search,
+  Share2, SlidersHorizontal, Sparkles, Star, TrendingUp, Upload, UserRound, Users, Volume2, VolumeX, X,
+} from 'lucide-react'
+import { EmptyState, Reveal, Skeleton } from './components'
+import { categories, editorStats, projects, type Category, type Project } from './data'
 
-const projects = [
-  { id: '01', title: 'Shinkai', category: 'Anime Edit · AMV', year: '2026', className: 'project-cyan', duration: '01:42', format: '4K · 16:9' },
-  { id: '02', title: 'Akuma', category: 'Dark Anime Edit', year: '2026', className: 'project-indigo', duration: '04:18', format: '4K · 2.39:1' },
-  { id: '03', title: 'Kokoro', category: 'Emotional AMV', year: '2025', className: 'project-electric', duration: '03:27', format: '4K · 16:9' },
-  { id: '04', title: 'Mirai', category: 'Motion Manga', year: '2025', className: 'project-ice', duration: '00:45', format: '6K · 16:9' },
-]
+type View = 'home' | 'repository' | 'project' | 'profile' | 'dashboard' | 'upload' | 'favorites'
+type Toast = { id: number; message: string; tone: 'success' | 'info' }
 
-const tracks = [
-  { title: 'Ice Tea', artist: 'Not The King.', src: './ice-tea.mp3' },
-]
+const tracks = [{ title: 'Ice Tea', artist: 'Not The King.', src: './ice-tea.mp3' }]
 
 const formatTime = (seconds: number) => {
   if (!Number.isFinite(seconds)) return '0:00'
-  const minutes = Math.floor(seconds / 60)
-  return `${minutes}:${Math.floor(seconds % 60).toString().padStart(2, '0')}`
+  return `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60).toString().padStart(2, '0')}`
 }
 
 function App() {
+  const [view, setView] = useState<View>('home')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [activeProject, setActiveProject] = useState<number | null>(null)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [category, setCategory] = useState<Category>('Todos')
+  const [selectedProject, setSelectedProject] = useState<Project>(projects[0])
+  const [favorites, setFavorites] = useState<Set<number>>(new Set([2]))
+  const [toasts, setToasts] = useState<Toast[]>([])
+  const [scrolled, setScrolled] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
-  const [volume, setVolume] = useState(0.7)
+  const [volume, setVolume] = useState(.72)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [currentTrack, setCurrentTrack] = useState(0)
   const [playerExpanded, setPlayerExpanded] = useState(false)
-  const cursorRef = useRef<HTMLDivElement>(null)
-  const cursorDotRef = useRef<HTMLDivElement>(null)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [dragging, setDragging] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    let frame = 0
-    const moveCursor = (event: MouseEvent) => {
-      if (cursorDotRef.current) {
-        cursorDotRef.current.style.transform = `translate3d(${event.clientX}px, ${event.clientY}px, 0)`
+    const timer = window.setTimeout(() => setLoading(false), 850)
+    const onScroll = () => setScrolled(window.scrollY > 24)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => { window.clearTimeout(timer); window.removeEventListener('scroll', onScroll) }
+  }, [])
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault(); setSearchOpen(true)
       }
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        if (cursorRef.current) {
-          cursorRef.current.style.transform = `translate3d(${event.clientX}px, ${event.clientY}px, 0)`
-        }
-      })
+      if (event.key === 'Escape') { setSearchOpen(false); setMenuOpen(false); setProfileOpen(false) }
     }
-    window.addEventListener('mousemove', moveCursor)
-    return () => {
-      cancelAnimationFrame(frame)
-      window.removeEventListener('mousemove', moveCursor)
-    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   useEffect(() => {
-    document.body.style.overflow = menuOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
-  }, [menuOpen])
+    if (searchOpen) window.setTimeout(() => searchRef.current?.focus(), 50)
+  }, [searchOpen])
 
   useEffect(() => {
-    const elements = document.querySelectorAll<HTMLElement>('[data-reveal]')
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('is-visible')
-          observer.unobserve(entry.target)
-        }
-      })
-    }, { threshold: 0.14, rootMargin: '0px 0px -8% 0px' })
+    if (!uploadFile) return
+    setUploadProgress(0)
+    const timer = window.setInterval(() => setUploadProgress((value) => {
+      if (value >= 100) { window.clearInterval(timer); return 100 }
+      return Math.min(value + 4, 100)
+    }), 90)
+    return () => window.clearInterval(timer)
+  }, [uploadFile])
 
-    elements.forEach((element) => observer.observe(element))
-    return () => observer.disconnect()
-  }, [])
+  const filteredProjects = useMemo(() => projects.filter((project) => {
+    const matchesCategory = category === 'Todos' || project.category === category
+    const term = search.toLowerCase().trim()
+    const matchesSearch = !term || [project.title, project.author, project.category, ...project.tags].join(' ').toLowerCase().includes(term)
+    return matchesCategory && matchesSearch
+  }), [category, search])
 
-  useEffect(() => {
-    let frame = 0
-    const updateScrollProgress = () => {
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        const scrollable = document.documentElement.scrollHeight - window.innerHeight
-        const progressValue = scrollable > 0 ? window.scrollY / scrollable : 0
-        document.documentElement.style.setProperty('--scroll-progress', progressValue.toString())
-      })
-    }
-    updateScrollProgress()
-    window.addEventListener('scroll', updateScrollProgress, { passive: true })
-    return () => {
-      cancelAnimationFrame(frame)
-      window.removeEventListener('scroll', updateScrollProgress)
-    }
-  }, [])
-
-  const scrollToWork = () => document.querySelector('#work')?.scrollIntoView({ behavior: 'smooth' })
-
-  const togglePlayback = async () => {
-    const audio = audioRef.current
-    if (!audio) return
-    if (audio.paused) {
-      await audio.play()
-    } else {
-      audio.pause()
-    }
+  const notify = (message: string, tone: Toast['tone'] = 'success') => {
+    const id = Date.now()
+    setToasts((items) => [...items, { id, message, tone }])
+    window.setTimeout(() => setToasts((items) => items.filter((item) => item.id !== id)), 2600)
   }
 
-  const toggleMute = () => {
-    const audio = audioRef.current
-    if (!audio) return
-    audio.muted = !audio.muted
-    setIsMuted(audio.muted)
+  const navigate = (nextView: View) => {
+    setView(nextView); setMenuOpen(false); setProfileOpen(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const changeVolume = (value: number) => {
-    const audio = audioRef.current
-    if (!audio) return
-    audio.volume = value
-    audio.muted = value === 0
-    setVolume(value)
-    setIsMuted(value === 0)
-  }
+  const openProject = (project: Project) => { setSelectedProject(project); navigate('project') }
 
-  const seek = (value: number) => {
-    const audio = audioRef.current
-    if (!audio) return
-    audio.currentTime = value
-    setCurrentTime(value)
-  }
-
-  const changeTrack = (direction: number) => {
-    const nextTrack = (currentTrack + direction + tracks.length) % tracks.length
-    setCurrentTrack(nextTrack)
-    setCurrentTime(0)
-    requestAnimationFrame(() => {
-      if (audioRef.current && isPlaying) void audioRef.current.play()
+  const toggleFavorite = (id: number) => {
+    setFavorites((current) => {
+      const next = new Set(current)
+      if (next.has(id)) { next.delete(id); notify('Removido dos favoritos', 'info') }
+      else { next.add(id); notify('Projeto salvo nos favoritos') }
+      return next
     })
   }
 
-  const track = tracks[currentTrack]
-  const progress = duration ? (currentTime / duration) * 100 : 0
+  const togglePlayback = async () => {
+    if (!audioRef.current) return
+    if (audioRef.current.paused) await audioRef.current.play()
+    else audioRef.current.pause()
+  }
+
+  const handleFiles = (files: FileList | null) => {
+    const file = files?.[0]
+    if (file) setUploadFile(file)
+  }
+
+  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault(); setDragging(false); handleFiles(event.dataTransfer.files)
+  }
+
+  const navItems: { label: string; icon: typeof Home; view: View }[] = [
+    { label: 'Repositório', icon: Grid2X2, view: 'repository' },
+    { label: 'Categorias', icon: Layers3, view: 'repository' },
+    { label: 'Editores', icon: Users, view: 'profile' },
+    { label: 'Upload', icon: Upload, view: 'upload' },
+    { label: 'Favoritos', icon: Bookmark, view: 'favorites' },
+  ]
 
   return (
-    <main>
-      <div className="page-progress" aria-hidden="true" />
-      <div className="cursor" ref={cursorRef} />
-      <div className="cursor-dot" ref={cursorDotRef} />
-      <audio
-        ref={audioRef}
-        src={track.src}
-        preload="metadata"
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-        onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
-        onEnded={() => changeTrack(1)}
-      />
-      <aside className={`music-player ${playerExpanded ? 'expanded' : ''}`} aria-label="Player de música">
-        <button className="player-cover" onClick={() => setPlayerExpanded(!playerExpanded)} aria-label={playerExpanded ? 'Recolher player' : 'Expandir player'}>
-          <div className={`vinyl ${isPlaying ? 'spinning' : ''}`}><span /></div>
-        </button>
-        <div className="music-main">
-          <div className="music-topline">
-            <span className="now-playing"><i /> Now playing</span>
-            <button className="queue-button" onClick={() => setPlayerExpanded(!playerExpanded)} aria-label="Ver fila"><ListMusic size={15} /></button>
-          </div>
-          <div className="track-row">
-            <div className="track-data"><strong>{track.title}</strong><span>{track.artist}</span></div>
-            <div className="equalizer" aria-hidden="true">{[1, 2, 3, 4, 5].map((bar) => <i key={bar} />)}</div>
-          </div>
-          <div className="music-progress">
-            <span>{formatTime(currentTime)}</span>
-            <input type="range" min="0" max={duration || 0} step="0.1" value={currentTime} onChange={(event) => seek(Number(event.target.value))} aria-label="Progresso da música" style={{ '--progress': `${progress}%` } as CSSProperties} />
-            <span>{formatTime(duration)}</span>
-          </div>
-          <div className="music-controls">
-            <button onClick={() => changeTrack(-1)} aria-label="Música anterior" disabled={tracks.length === 1}><ChevronLeft /></button>
-            <button className="main-play" onClick={togglePlayback} aria-label={isPlaying ? 'Pausar música' : 'Tocar música'}>{isPlaying ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</button>
-            <button onClick={() => changeTrack(1)} aria-label="Próxima música" disabled={tracks.length === 1}><ChevronRight /></button>
-            <div className="volume-control">
-              <button onClick={toggleMute} aria-label={isMuted ? 'Ativar som' : 'Mutar música'}>{isMuted || volume === 0 ? <VolumeX /> : <Volume2 />}</button>
-              <input type="range" min="0" max="1" step="0.01" value={isMuted ? 0 : volume} onChange={(event) => changeVolume(Number(event.target.value))} aria-label="Volume" style={{ '--volume': `${(isMuted ? 0 : volume) * 100}%` } as CSSProperties} />
-            </div>
-          </div>
-          <div className="track-queue"><span>01</span><div><strong>{track.title}</strong><small>{track.artist} · faixa única</small></div><b>Ativa</b></div>
-        </div>
-      </aside>
-      <nav className="nav">
-        <a href="#top" className="brand"><Clapperboard size={19} /> LORENZO<span>.</span></a>
-        <div className="nav-status"><i /> Disponível para projetos</div>
-        <div className="nav-links">
-          <a href="#work"><span>01</span> Trabalhos</a>
-          <a href="#about"><span>02</span> Sobre</a>
-          <a href="#contact"><span>03</span> Contato</a>
-        </div>
-        <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'} aria-expanded={menuOpen}>
-          {menuOpen ? <X /> : <Menu />}
-        </button>
-      </nav>
+    <main className="app-shell">
+      <audio ref={audioRef} src={tracks[0].src} preload="metadata" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)} />
+      <div className="ambient ambient-one" /><div className="ambient ambient-two" /><div className="grain" />
 
-      {menuOpen && (
-        <div className="mobile-menu">
-          <span className="menu-kicker">Menu / 2026</span>
-          <a href="#work" onClick={() => setMenuOpen(false)}><small>01</small> Trabalhos</a>
-          <a href="#about" onClick={() => setMenuOpen(false)}><small>02</small> Sobre</a>
-          <a href="#contact" onClick={() => setMenuOpen(false)}><small>03</small> Contato</a>
+      <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
+      <header className={`topbar ${scrolled ? 'is-scrolled' : ''}`}>
+        <button className="logo" onClick={() => navigate('home')} aria-label="Ir para início"><span><Clapperboard /></span>FRAME<span>LAB</span></button>
+        <nav className="desktop-nav" aria-label="Navegação principal">
+          {navItems.map((item) => <button key={item.label} className={view === item.view ? 'active' : ''} onClick={() => navigate(item.view)}>{item.label}</button>)}
+        </nav>
+        <div className="nav-actions">
+          <button className="global-search" onClick={() => setSearchOpen(true)}><Search /><span>Buscar recursos</span><kbd><Command /> K</kbd></button>
+          <button className="icon-button notification" aria-label="Notificações"><Bell /><i /></button>
+          <div className="profile-menu">
+            <button className="profile-trigger" onClick={() => setProfileOpen(!profileOpen)}><span>LO</span><ChevronDown /></button>
+            {profileOpen && <div className="profile-dropdown"><button onClick={() => navigate('profile')}><UserRound /> Meu perfil</button><button onClick={() => navigate('dashboard')}><BarChart3 /> Dashboard</button><button onClick={() => navigate('favorites')}><FolderHeart /> Coleções</button></div>}
+          </div>
+          <button className="mobile-toggle" onClick={() => setMenuOpen(true)} aria-label="Abrir menu"><Menu /></button>
         </div>
-      )}
+      </header>
 
-      <section className="hero" id="top">
-        <div className="hero-noise" />
-        <div className="hero-orbit"><span>PLAY</span></div>
-        <div className="hero-meta reveal">
-          <p className="eyebrow">Anime editor · São Paulo, BR</p>
-          <p className="edition">AMV Showreel / 2026</p>
-        </div>
-        <h1>
-          <span className="line"><span>ANIME EM</span></span>
-          <span className="line outline"><span><em>MOVIMENTO.</em></span></span>
-        </h1>
-        <div className="hero-bottom reveal delay">
-          <p><strong>Emoção frame a frame.</strong> Lorem ipsum dolor sit amet, consectetur adipiscing elit. Transformo cenas de anime em experiências visuais intensas.</p>
-          <button className="circle-button" onClick={scrollToWork} aria-label="Ver projetos"><ArrowDown /></button>
-        </div>
-        <div className="hero-index"><span>SCROLL TO EXPLORE</span><b>01</b><span>04</span></div>
-        <div className="scroll-track"><div className="scroll-fill" /></div>
-      </section>
+      {menuOpen && <div className="drawer-wrap"><button className="drawer-backdrop" onClick={() => setMenuOpen(false)} aria-label="Fechar menu" /><aside className="mobile-drawer"><div className="drawer-head"><div className="logo"><span><Clapperboard /></span>FRAMELAB</div><button className="icon-button" onClick={() => setMenuOpen(false)}><X /></button></div>{navItems.map((item) => <button key={item.label} onClick={() => navigate(item.view)}><item.icon />{item.label}<ArrowRight /></button>)}<div className="drawer-profile"><span>LO</span><div><strong>Lorenzo</strong><small>@lorenzo.edits</small></div></div></aside></div>}
 
-      <div className="marquee" aria-hidden="true">
-        <div><span>AMV</span><i>青</i><span>ANIME EDIT</span><i>✦</i><span>MOTION</span><i>夢</i><span>IMPACT</span><i>✦</i><span>AMV</span><i>青</i><span>ANIME EDIT</span><i>✦</i><span>MOTION</span><i>夢</i><span>IMPACT</span><i>✦</i></div>
+      {searchOpen && <div className="command-overlay" onMouseDown={() => setSearchOpen(false)}><div className="command-palette" onMouseDown={(event) => event.stopPropagation()}><div className="command-input"><Search /><input ref={searchRef} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Busque edits, presets, efeitos ou criadores..." /><kbd>ESC</kbd></div><div className="command-results"><span className="command-label">Resultados rápidos</span>{filteredProjects.slice(0, 4).map((project) => <button key={project.id} onClick={() => { openProject(project); setSearchOpen(false) }}><div className={`mini-thumb ${project.accent}`}><Play /></div><div><strong>{project.title}</strong><small>{project.category} · {project.author}</small></div><ArrowRight /></button>)}{filteredProjects.length === 0 && <EmptyState icon={<Search />} title="Nenhum resultado" text="Tente buscar outro título, categoria ou tag." />}</div></div></div>}
+
+      <div id="main-content">
+      {view === 'home' && <HomeView loading={loading} navigate={navigate} openProject={openProject} favorites={favorites} toggleFavorite={toggleFavorite} />}
+      {view === 'repository' && <RepositoryView loading={loading} projects={filteredProjects} search={search} setSearch={setSearch} category={category} setCategory={setCategory} openProject={openProject} favorites={favorites} toggleFavorite={toggleFavorite} />}
+      {view === 'project' && <ProjectView project={selectedProject} onBack={() => navigate('repository')} openProject={openProject} favorite={favorites.has(selectedProject.id)} toggleFavorite={toggleFavorite} notify={notify} />}
+      {view === 'profile' && <ProfileView openProject={openProject} favorites={favorites} toggleFavorite={toggleFavorite} />}
+      {view === 'dashboard' && <DashboardView openProject={openProject} />}
+      {view === 'upload' && <UploadView file={uploadFile} progress={uploadProgress} dragging={dragging} setDragging={setDragging} onDrop={onDrop} handleFiles={handleFiles} clear={() => setUploadFile(null)} notify={notify} />}
+      {view === 'favorites' && <FavoritesView favorites={favorites} openProject={openProject} toggleFavorite={toggleFavorite} />}
       </div>
 
-      <section className="work" id="work">
-        <div className="section-header" data-reveal="fade">
-          <p className="eyebrow">Edits selecionados</p>
-          <span>2025—2026</span>
-        </div>
-        <div className="project-grid">
-          {projects.map((project, index) => (
-            <article className={`project ${project.className}`} key={project.id} data-reveal={index % 2 === 0 ? 'left' : 'right'} style={{ '--reveal-delay': `${(index % 2) * 100}ms` } as CSSProperties}>
-              <button className="project-visual" onClick={() => setActiveProject(activeProject === index ? null : index)} aria-label={`Reproduzir ${project.title}`}>
-                <div className="project-art">
-                  <span className="art-word">{project.title}</span>
-                  <div className="frame-lines" />
-                  <div className="timecode">00:{project.id}:24:08</div>
-                  <div className="rec"><i /> REC</div>
-                </div>
-                <div className="play-button">
-                  {activeProject === index ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}
-                </div>
-                <span className="project-number">/{project.id}</span>
-                <span className="project-format">{project.format}</span>
-                {activeProject === index && <div className="player-bar"><Pause size={12} fill="currentColor" /><div><i /></div><span>{project.duration}</span><Volume2 size={13} /></div>}
-              </button>
-              <div className="project-info">
-                <h2>{project.title}</h2>
-                <div><span>{project.category}</span><span>{project.year} · {project.duration}</span></div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="about" id="about">
-        <div className="section-header about-header" data-reveal="fade"><p className="eyebrow">Sobre o editor</p><span>Desde 2021</span></div>
-        <div className="about-grid">
-          <h2 data-reveal="left">RITMO, IMPACTO<br />E <em>EMOÇÃO.</em></h2>
-          <div className="about-copy" data-reveal="right">
-            <span className="about-number">05+</span>
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
-            <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
-            <div className="services"><span><b>01</b> Montagem</span><span><b>02</b> Color grading</span><span><b>03</b> Motion design</span><span><b>04</b> Sound design</span></div>
-          </div>
-        </div>
-      </section>
-
-      <footer id="contact">
-        <p className="eyebrow" data-reveal="fade">Tem um edit em mente?</p>
-        <a href="mailto:contato@exemplo.com" className="footer-cta" data-reveal="up">VAMOS CRIAR <ArrowUpRight /></a>
-        <div className="footer-bottom" data-reveal="fade">
-          <span>© 2026 Lorenzo</span>
-          <div><a href="#">Instagram</a><a href="#">Vimeo</a><a href="#">YouTube</a></div>
-          <a href="#top">Voltar ao topo ↑</a>
-        </div>
-      </footer>
+      <MusicPlayer audioRef={audioRef} isPlaying={isPlaying} isMuted={isMuted} volume={volume} currentTime={currentTime} duration={duration} expanded={playerExpanded} setExpanded={setPlayerExpanded} togglePlayback={togglePlayback} setMuted={() => { if (!audioRef.current) return; audioRef.current.muted = !audioRef.current.muted; setIsMuted(audioRef.current.muted) }} setVolume={(value) => { if (!audioRef.current) return; audioRef.current.volume = value; audioRef.current.muted = value === 0; setVolume(value); setIsMuted(value === 0) }} seek={(value) => { if (!audioRef.current) return; audioRef.current.currentTime = value; setCurrentTime(value) }} />
+      <div className="toast-stack" aria-live="polite">{toasts.map((toast) => <div key={toast.id} className={`toast ${toast.tone}`}><Check />{toast.message}</div>)}</div>
     </main>
   )
 }
+
+function HomeView({ loading, navigate, openProject, favorites, toggleFavorite }: { loading: boolean; navigate: (view: View) => void; openProject: (project: Project) => void; favorites: Set<number>; toggleFavorite: (id: number) => void }) {
+  return <>
+    <section className="hero-platform">
+      <div className="hero-grid" /><div className="hero-orb" />
+      <div className="hero-content">
+        <div className="hero-badge"><Sparkles /> A nova casa dos editores <span>2026</span></div>
+        <h1>Crie edits que<br /><em>ninguém esquece.</em></h1>
+        <p>Descubra projetos, presets e recursos premium feitos por uma comunidade obcecada por movimento, ritmo e impacto.</p>
+        <div className="hero-actions"><button className="button primary" onClick={() => navigate('repository')}>Explorar repositório <ArrowRight /></button><button className="button secondary" onClick={() => navigate('upload')}><CloudUpload /> Publicar projeto</button></div>
+        <div className="hero-proof"><div className="avatar-stack"><span>LO</span><span>AK</span><span>MK</span><span>+</span></div><div><strong>+12 mil criadores</strong><small>compartilhando recursos todos os dias</small></div></div>
+      </div>
+      <div className="hero-showcase">
+        <div className="showcase-window"><div className="window-bar"><i /><i /><i /><span>composition_01.aep</span></div><div className="showcase-canvas"><div className="anime-silhouette"><span>01</span><strong>IMPACT<br />FRAME</strong></div><button className="showcase-play"><Play fill="currentColor" /></button><div className="timeline"><div className="timeline-head"><span>00:00:18:24</span><span>4K · 60 FPS</span></div>{[84, 62, 73].map((width, index) => <div className="track" key={width}><span>{index === 0 ? 'VIDEO' : index === 1 ? 'EFFECTS' : 'AUDIO'}</span><i style={{ width: `${width}%` }} /></div>)}</div></div></div>
+        <div className="floating-chip chip-one"><TrendingUp /><span><small>Downloads hoje</small><strong>2.8K</strong></span></div><div className="floating-chip chip-two"><Users /><span><small>Online agora</small><strong>847</strong></span></div>
+      </div>
+      <button className="scroll-cue" onClick={() => document.querySelector('#featured')?.scrollIntoView({ behavior: 'smooth' })}><span>Role para descobrir</span><ArrowDown /></button>
+    </section>
+    <section className="trust-strip"><span>RECURSOS PARA</span>{['AFTER EFFECTS', 'PREMIERE PRO', 'DAVINCI RESOLVE', 'CAPCUT', 'ALIGHT MOTION'].map((tool) => <strong key={tool}>{tool}</strong>)}</section>
+    <section className="section" id="featured"><Reveal><SectionTitle eyebrow="Em alta agora" title="Escolhas da comunidade" text="Os projetos mais vistos, salvos e baixados nesta semana." action={<button className="text-button" onClick={() => navigate('repository')}>Ver tudo <ArrowRight /></button>} /></Reveal><div className="project-grid-new">{(loading ? projects.slice(0, 3) : projects.slice(0, 3)).map((project, index) => loading ? <ProjectSkeleton key={project.id} /> : <Reveal key={project.id} delay={index * 90}><ProjectCard project={project} openProject={openProject} favorite={favorites.has(project.id)} toggleFavorite={toggleFavorite} /></Reveal>)}</div></section>
+    <section className="section categories-section"><Reveal><SectionTitle eyebrow="Feito para criar" title="Tudo para o seu próximo edit" text="Navegue por uma biblioteca curada para acelerar cada parte do processo criativo." /></Reveal><div className="category-grid">{categories.slice(1, 7).map((item, index) => <Reveal key={item} delay={index * 55}><button className="category-card" onClick={() => navigate('repository')}><span>{String(index + 1).padStart(2, '0')}</span><div><strong>{item}</strong><small>{18 + index * 7} recursos</small></div><ArrowRight /></button></Reveal>)}</div></section>
+    <section className="creator-cta section"><Reveal><div className="creator-panel"><div><span className="section-kicker">Para criadores</span><h2>Seu talento merece<br />mais alcance.</h2><p>Publique projetos, construa uma audiência e acompanhe o crescimento do seu portfólio.</p><button className="button light" onClick={() => navigate('upload')}>Começar a publicar <ArrowRight /></button></div><div className="creator-metrics">{editorStats.map((stat) => <div key={stat.label}><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.delta}</small></div>)}</div></div></Reveal></section>
+  </>
+}
+
+function RepositoryView({ loading, projects: items, search, setSearch, category, setCategory, openProject, favorites, toggleFavorite }: { loading: boolean; projects: Project[]; search: string; setSearch: (value: string) => void; category: Category; setCategory: (value: Category) => void; openProject: (project: Project) => void; favorites: Set<number>; toggleFavorite: (id: number) => void }) {
+  return <section className="page repository-page"><div className="page-heading"><span className="section-kicker">Repositório</span><h1>Recursos para elevar<br />cada <em>frame.</em></h1><p>Explore uma biblioteca viva de projetos e assets criados por editores de todo o mundo.</p></div><div className="repository-toolbar"><label className="repository-search"><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por título, criador ou tag..." /><kbd>⌘ K</kbd></label><button className="sort-button"><ListFilter /> Mais relevantes <ChevronDown /></button></div><div className="filter-row" role="tablist">{categories.map((item) => <button key={item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div><div className="results-meta"><span><strong>{items.length}</strong> recursos encontrados</span><button><SlidersHorizontal /> Filtros avançados</button></div>{items.length ? <div className="project-grid-new repository-grid">{(loading ? projects.slice(0, 6) : items).map((project, index) => loading ? <ProjectSkeleton key={project.id} /> : <Reveal key={project.id} delay={(index % 3) * 60}><ProjectCard project={project} openProject={openProject} favorite={favorites.has(project.id)} toggleFavorite={toggleFavorite} /></Reveal>)}</div> : <EmptyState icon={<Search />} title="Nenhum recurso encontrado" text="Ajuste a busca ou selecione outra categoria." />}</section>
+}
+
+function ProjectCard({ project, openProject, favorite, toggleFavorite }: { project: Project; openProject: (project: Project) => void; favorite: boolean; toggleFavorite: (id: number) => void }) {
+  return <article className="project-card"><button className={`project-thumb ${project.accent}`} onClick={() => openProject(project)}><div className="thumb-grid" /><span className="thumb-index">0{project.id}</span><strong>{project.title.split('—')[0]}</strong><div className="preview-overlay"><span><Play fill="currentColor" /> Preview</span></div><span className="duration">{project.duration}</span></button><div className="card-body"><div className="card-title-row"><button onClick={() => openProject(project)}><h3>{project.title}</h3></button><button className={`favorite-button ${favorite ? 'active' : ''}`} onClick={() => toggleFavorite(project.id)} aria-label="Favoritar projeto"><Heart fill={favorite ? 'currentColor' : 'none'} /></button></div><div className="author-row"><span className="avatar">{project.avatar}</span><div><strong>{project.author}</strong><small>{project.handle}</small></div></div><div className="tag-row">{project.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><div className="card-footer"><span><Eye /> {project.views}</span><span><Download /> {project.downloads}</span><span>{project.date}</span></div></div></article>
+}
+
+function ProjectView({ project, onBack, openProject, favorite, toggleFavorite, notify }: { project: Project; onBack: () => void; openProject: (project: Project) => void; favorite: boolean; toggleFavorite: (id: number) => void; notify: (message: string, tone?: Toast['tone']) => void }) {
+  return <section className="page project-page"><button className="back-button" onClick={onBack}><ArrowLeft /> Voltar ao repositório</button><Reveal><div className={`project-stage ${project.accent}`}><div className="stage-grid" /><span className="stage-tag">FEATURED PROJECT / 0{project.id}</span><h2>{project.title}</h2><button className="stage-play"><Play fill="currentColor" /></button><div className="stage-controls"><span>00:00</span><i><b /></i><span>{project.duration}</span><Volume2 /></div></div></Reveal><div className="project-detail-grid"><Reveal><div className="project-copy"><div className="detail-author"><span>{project.avatar}</span><div><strong>{project.author}</strong><small>{project.handle}</small></div><button>Seguir</button></div><h1>{project.title}</h1><p>{project.description}</p><div className="tag-row large">{project.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><div className="project-actions"><button className="button primary" onClick={() => notify('Download iniciado')}><Download /> Baixar projeto</button><button className={`button secondary ${favorite ? 'selected' : ''}`} onClick={() => toggleFavorite(project.id)}><Heart fill={favorite ? 'currentColor' : 'none'} /> {favorite ? 'Salvo' : 'Favoritar'}</button><button className="icon-button" onClick={() => notify('Link copiado')}><Share2 /></button></div></div></Reveal><Reveal delay={100}><aside className="project-info-panel"><h3>Informações</h3><InfoRow label="Categoria" value={project.category} /><InfoRow label="Software" value="After Effects 2026" /><InfoRow label="Resolução" value="3840 × 2160" /><InfoRow label="FPS" value="60" /><InfoRow label="Tamanho" value="184 MB" /><InfoRow label="Licença" value="Uso pessoal" /><div className="detail-stats"><span><Eye />{project.views}<small>visualizações</small></span><span><Download />{project.downloads}<small>downloads</small></span></div></aside></Reveal></div><section className="related-section"><SectionTitle eyebrow="Continue explorando" title="Projetos relacionados" /><div className="project-grid-new">{projects.filter((item) => item.id !== project.id).slice(0, 3).map((item) => <ProjectCard key={item.id} project={item} openProject={openProject} favorite={false} toggleFavorite={() => undefined} />)}</div></section></section>
+}
+
+function ProfileView({ openProject, favorites, toggleFavorite }: { openProject: (project: Project) => void; favorites: Set<number>; toggleFavorite: (id: number) => void }) {
+  const [tab, setTab] = useState<'Projetos' | 'Favoritos' | 'Coleções'>('Projetos')
+  const items = tab === 'Favoritos' ? projects.filter((project) => favorites.has(project.id)) : projects.filter((project) => project.author === 'Lorenzo')
+  return <section className="page profile-page"><div className="profile-cover"><div className="profile-grid" /></div><div className="profile-header"><div className="profile-avatar">LO<i /></div><div className="profile-identity"><span className="verified">Editor verificado</span><h1>Lorenzo <Check /></h1><p>@lorenzo.edits · Criando histórias através de ritmo, movimento e impacto.</p><div><span><strong>24</strong> projetos</span><span><strong>18.7K</strong> seguidores</span><span><strong>46K</strong> downloads</span></div></div><button className="button primary">Editar perfil</button><button className="icon-button"><MoreHorizontal /></button></div><div className="profile-tabs">{(['Projetos', 'Favoritos', 'Coleções'] as const).map((item) => <button className={tab === item ? 'active' : ''} onClick={() => setTab(item)} key={item}>{item}</button>)}</div>{items.length ? <div className="project-grid-new profile-projects">{items.map((project) => <ProjectCard key={project.id} project={project} openProject={openProject} favorite={favorites.has(project.id)} toggleFavorite={toggleFavorite} />)}</div> : <EmptyState icon={<FolderHeart />} title="Nada por aqui ainda" text="Os itens salvos aparecerão nesta aba." />}</section>
+}
+
+function DashboardView({ openProject }: { openProject: (project: Project) => void }) {
+  return <section className="page dashboard-page"><div className="dashboard-heading"><div><span className="section-kicker">Creator studio</span><h1>Bom trabalho, Lorenzo.</h1><p>Aqui está o desempenho do seu portfólio nos últimos 30 dias.</p></div><button className="button primary"><Upload /> Novo projeto</button></div><div className="stats-grid">{editorStats.map((stat, index) => <Reveal key={stat.label} delay={index * 60}><div className="stat-card"><span>{stat.label}<TrendingUp /></span><strong>{stat.value}</strong><small>{stat.delta} este mês</small><div className="sparkline">{[34, 52, 43, 70, 61, 88, 78, 100].map((height, point) => <i key={point} style={{ height: `${height}%` }} />)}</div></div></Reveal>)}</div><div className="dashboard-grid"><div className="chart-panel"><div className="panel-head"><div><h2>Crescimento</h2><span>Visualizações e downloads</span></div><button>Últimos 30 dias <ChevronDown /></button></div><div className="line-chart"><div className="chart-lines"><i /><i /><i /><i /></div><svg viewBox="0 0 800 220" preserveAspectRatio="none"><defs><linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#3b82f6" stopOpacity=".35"/><stop offset="1" stopColor="#3b82f6" stopOpacity="0"/></linearGradient></defs><path d="M0 180 C90 165 120 90 220 120 S360 185 450 95 S610 70 800 30 L800 220 L0 220Z" fill="url(#chartFill)"/><path d="M0 180 C90 165 120 90 220 120 S360 185 450 95 S610 70 800 30" fill="none" stroke="#60a5fa" strokeWidth="4"/></svg></div></div><div className="activity-panel"><div className="panel-head"><div><h2>Atividade</h2><span>Atualizações recentes</span></div></div>{['Seu projeto atingiu 10K views','Novo favorito em Blue Lock','Velocity Flow foi baixado','Você ganhou 42 seguidores'].map((item, index) => <div className="activity-item" key={item}><span><Check /></span><div><strong>{item}</strong><small>{index + 1}h atrás</small></div></div>)}</div></div><section className="recent-projects"><SectionTitle eyebrow="Conteúdo" title="Seus projetos recentes" /><div className="recent-list">{projects.filter((project) => project.author === 'Lorenzo').map((project) => <button key={project.id} onClick={() => openProject(project)}><div className={`mini-thumb ${project.accent}`}><Play /></div><div><strong>{project.title}</strong><small>{project.category} · Publicado</small></div><span><Eye /> {project.views}</span><span><Download /> {project.downloads}</span><MoreHorizontal /></button>)}</div></section></section>
+}
+
+function UploadView({ file, progress, dragging, setDragging, onDrop, handleFiles, clear, notify }: { file: File | null; progress: number; dragging: boolean; setDragging: (value: boolean) => void; onDrop: (event: DragEvent<HTMLDivElement>) => void; handleFiles: (files: FileList | null) => void; clear: () => void; notify: (message: string) => void }) {
+  return <section className="page upload-page"><div className="page-heading compact"><span className="section-kicker">Creator upload</span><h1>Compartilhe sua criação.</h1><p>Publique projetos, presets e recursos para milhares de editores.</p></div><div className="upload-layout"><div className="upload-card"><div className={`drop-zone ${dragging ? 'is-dragging' : ''} ${file ? 'has-file' : ''}`} onDragOver={(event) => { event.preventDefault(); setDragging(true) }} onDragLeave={() => setDragging(false)} onDrop={onDrop}>{!file ? <><div className="upload-icon"><CloudUpload /></div><h2>Arraste seu arquivo para cá</h2><p>ou clique para selecionar do seu computador</p><label className="button primary">Selecionar arquivo<input type="file" onChange={(event) => handleFiles(event.target.files)} /></label><small>ZIP, RAR, AEP, PRPROJ, MP4 · Máximo 2 GB</small></> : <div className="upload-file"><div className="file-icon">{progress === 100 ? <Check /> : <FileArchive />}</div><div className="file-main"><div><strong>{file.name}</strong><span>{(file.size / 1024 / 1024).toFixed(1)} MB</span></div><div className="upload-bar"><i style={{ width: `${progress}%` }} /></div><small>{progress === 100 ? 'Upload concluído' : `Enviando... ${progress}%`}</small></div><button className="icon-button" onClick={clear}><X /></button></div>}</div>{file && progress === 100 && <div className="upload-form"><label>Título<input defaultValue={file.name.replace(/\.[^/.]+$/, '')} /></label><label>Categoria<select defaultValue="Projects">{categories.slice(1).map((item) => <option key={item}>{item}</option>)}</select></label><label className="full">Descrição<textarea placeholder="Conte o que torna este recurso especial..." /></label><label className="full">Tags<input placeholder="After Effects, AMV, Velocity..." /></label><button className="button primary full-button" onClick={() => notify('Projeto publicado com sucesso')}>Publicar projeto <ArrowRight /></button></div>}</div><aside className="upload-tips"><span className="section-kicker">Checklist</span><h3>Prepare seu projeto</h3>{['Use uma thumbnail em alta resolução','Inclua uma descrição objetiva','Organize arquivos e dependências','Informe software e versão','Respeite direitos autorais'].map((tip) => <p key={tip}><Check />{tip}</p>)}<div className="tip-card"><Sparkles /><div><strong>Dica profissional</strong><span>Projetos com preview recebem até 3× mais downloads.</span></div></div></aside></div></section>
+}
+
+function FavoritesView({ favorites, openProject, toggleFavorite }: { favorites: Set<number>; openProject: (project: Project) => void; toggleFavorite: (id: number) => void }) {
+  const items = projects.filter((project) => favorites.has(project.id))
+  return <section className="page favorites-page"><div className="page-heading compact"><span className="section-kicker">Sua biblioteca</span><h1>Favoritos.</h1><p>Todos os recursos que você salvou para usar mais tarde.</p></div>{items.length ? <div className="project-grid-new">{items.map((project) => <ProjectCard key={project.id} project={project} openProject={openProject} favorite toggleFavorite={toggleFavorite} />)}</div> : <EmptyState icon={<Heart />} title="Nenhum favorito ainda" text="Explore o repositório e salve os recursos que mais gostar." />}</section>
+}
+
+function MusicPlayer({ audioRef, isPlaying, isMuted, volume, currentTime, duration, expanded, setExpanded, togglePlayback, setMuted, setVolume, seek }: { audioRef: RefObject<HTMLAudioElement | null>; isPlaying: boolean; isMuted: boolean; volume: number; currentTime: number; duration: number; expanded: boolean; setExpanded: (value: boolean) => void; togglePlayback: () => void; setMuted: () => void; setVolume: (value: number) => void; seek: (value: number) => void }) {
+  void audioRef
+  const progress = duration ? currentTime / duration * 100 : 0
+  return <aside className={`music-dock ${expanded ? 'expanded' : ''}`}><button className={`album-art ${isPlaying ? 'playing' : ''}`} onClick={() => setExpanded(!expanded)}><span /></button><div className="music-copy"><small><i /> NOW PLAYING</small><strong>Ice Tea</strong><span>Not The King.</span>{expanded && <div className="dock-progress"><em>{formatTime(currentTime)}</em><input type="range" min="0" max={duration || 0} step=".1" value={currentTime} onChange={(event) => seek(Number(event.target.value))} style={{ '--progress': `${progress}%` } as CSSProperties}/><em>{formatTime(duration)}</em></div>}</div><button className="dock-play" onClick={togglePlayback}>{isPlaying ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</button>{expanded && <><button className="dock-control" disabled><ChevronLeft /></button><button className="dock-control" disabled><ChevronRight /></button><div className="dock-volume"><button onClick={setMuted}>{isMuted ? <VolumeX /> : <Volume2 />}</button><input type="range" min="0" max="1" step=".01" value={isMuted ? 0 : volume} onChange={(event) => setVolume(Number(event.target.value))} /></div></>}<button className="dock-expand" onClick={() => setExpanded(!expanded)}><ListMusic /></button></aside>
+}
+
+function SectionTitle({ eyebrow, title, text, action }: { eyebrow: string; title: string; text?: string; action?: ReactNode }) { return <div className="section-title"><div><span className="section-kicker">{eyebrow}</span><h2>{title}</h2>{text && <p>{text}</p>}</div>{action}</div> }
+function InfoRow({ label, value }: { label: string; value: string }) { return <div className="info-row"><span>{label}</span><strong>{value}</strong></div> }
+function ProjectSkeleton() { return <div className="project-card skeleton-card"><Skeleton className="skeleton-thumb"/><div className="card-body"><Skeleton className="line wide"/><Skeleton className="line medium"/><Skeleton className="line small"/></div></div> }
 
 export default App
