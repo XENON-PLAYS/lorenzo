@@ -144,5 +144,24 @@ footer .eyebrow { color: #333; }
   .about { padding-top: 6rem; padding-bottom: 6rem; }.about-grid { grid-template-columns: 1fr; gap: 3.5rem; }.about h2 { font-size: clamp(3rem, 15vw, 6rem); }.about-number { font-size: 5rem; }.about-copy { margin-left: 0; }
   footer { padding-top: 5.5rem; }.footer-cta { font-size: clamp(3rem, 15vw, 6rem); }.footer-bottom { flex-wrap: wrap; gap: 30px; }.footer-bottom div { order: 3; width: 100%; }
 }
+@media (max-width: 480px) {
+  :root { --page-gutter: 1.1rem; }
+  .brand { font-size: 1rem; }
+  .hero { min-height: max(100svh, 40rem); padding-bottom: 4rem; }
+  .hero h1 { font-size: clamp(2.9rem, 15.8vw, 4.7rem); }
+  .hero-bottom p { font-size: .77rem; line-height: 1.55; }
+  .eyebrow { font-size: .58rem; letter-spacing: .18em; }
+  .section-header { align-items: flex-end; margin-bottom: 2.5rem; }
+  .section-header .eyebrow { max-width: 11rem; line-height: 1.5; }
+  .project-visual { aspect-ratio: 1.08; }
+  .project-number, .project-format { top: 14px; }.project-number { left: 14px; }.project-format { right: 14px; }
+  .timecode, .rec { bottom: 11%; }
+  .project-info { align-items: flex-start; }.project-info div { font-size: .58rem; }
+  .player-bar { left: 10px; right: 10px; bottom: 10px; }
+  .about-copy p:nth-of-type(1) { font-size: 1.05rem; }
+  .footer-cta { align-items: flex-start; padding-bottom: 1.5rem; }
+  .footer-bottom { align-items: flex-start; flex-direction: column; margin-top: 3.5rem; }
+  .footer-bottom div { flex-wrap: wrap; gap: 1rem 1.5rem; }
+}
 @keyframes menuIn { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; scroll-behavior: auto !important; } }
