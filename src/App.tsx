@@ -118,13 +118,18 @@ function App() {
     event.preventDefault(); setDragging(false); handleFiles(event.dataTransfer.files)
   }
 
-  const navItems: { label: string; icon: typeof Home; view: View }[] = [
-    { label: 'Repositório', icon: Grid2X2, view: 'repository' },
-    { label: 'Categorias', icon: Layers3, view: 'repository' },
-    { label: 'Editores', icon: Users, view: 'profile' },
-    { label: 'Upload', icon: Upload, view: 'upload' },
-    { label: 'Favoritos', icon: Bookmark, view: 'favorites' },
+  const navItems = [
+    { label: 'Início', icon: Home, target: 'top' },
+    { label: 'Trabalhos', icon: Grid2X2, target: 'work' },
+    { label: 'Destaque', icon: Star, target: 'featured-project' },
+    { label: 'Sobre', icon: UserRound, target: 'about' },
+    { label: 'Contato', icon: ArrowRight, target: 'contact' },
   ]
+
+  const scrollTo = (target: string) => {
+    document.getElementById(target)?.scrollIntoView({ behavior: 'smooth' })
+    setMenuOpen(false)
+  }
 
   return (
     <main className="app-shell">
@@ -135,25 +140,21 @@ function App() {
       <header className={`topbar ${scrolled ? 'is-scrolled' : ''}`}>
         <button className="logo" onClick={() => navigate('home')} aria-label="Ir para início"><span><Clapperboard /></span>LORENZO<span>.</span></button>
         <nav className="desktop-nav" aria-label="Navegação principal">
-          {navItems.map((item) => <button key={item.label} className={view === item.view ? 'active' : ''} onClick={() => navigate(item.view)}>{item.label}</button>)}
+          {navItems.map((item) => <button key={item.label} onClick={() => { navigate('home'); window.setTimeout(() => scrollTo(item.target), 60) }}>{item.label}</button>)}
         </nav>
-        <div className="nav-actions">
-          <button className="global-search" onClick={() => setSearchOpen(true)}><Search /><span>Buscar recursos</span><kbd><Command /> K</kbd></button>
-          <button className="icon-button notification" aria-label="Notificações"><Bell /><i /></button>
-          <div className="profile-menu">
-            <button className="profile-trigger" onClick={() => setProfileOpen(!profileOpen)}><span>LO</span><ChevronDown /></button>
-            {profileOpen && <div className="profile-dropdown"><button onClick={() => navigate('profile')}><UserRound /> Meu perfil</button><button onClick={() => navigate('dashboard')}><BarChart3 /> Dashboard</button><button onClick={() => navigate('favorites')}><FolderHeart /> Coleções</button></div>}
-          </div>
+        <div className="nav-actions portfolio-actions">
+          <button className="availability"><i /> Disponível para projetos</button>
+          <button className="button primary nav-contact" onClick={() => scrollTo('contact')}>Contato <ArrowRight /></button>
           <button className="mobile-toggle" onClick={() => setMenuOpen(true)} aria-label="Abrir menu"><Menu /></button>
         </div>
       </header>
 
-      {menuOpen && <div className="drawer-wrap"><button className="drawer-backdrop" onClick={() => setMenuOpen(false)} aria-label="Fechar menu" /><aside className="mobile-drawer"><div className="drawer-head"><div className="logo"><span><Clapperboard /></span>LORENZO<span>.</span></div><button className="icon-button" onClick={() => setMenuOpen(false)}><X /></button></div>{navItems.map((item) => <button key={item.label} onClick={() => navigate(item.view)}><item.icon />{item.label}<ArrowRight /></button>)}<div className="drawer-profile"><span>LO</span><div><strong>Lorenzo</strong><small>@lorenzo.edits</small></div></div></aside></div>}
+      {menuOpen && <div className="drawer-wrap"><button className="drawer-backdrop" onClick={() => setMenuOpen(false)} aria-label="Fechar menu" /><aside className="mobile-drawer"><div className="drawer-head"><div className="logo"><span><Clapperboard /></span>LORENZO<span>.</span></div><button className="icon-button" onClick={() => setMenuOpen(false)}><X /></button></div>{navItems.map((item) => <button key={item.label} onClick={() => { navigate('home'); window.setTimeout(() => scrollTo(item.target), 60) }}><item.icon />{item.label}<ArrowRight /></button>)}<div className="drawer-profile"><span>LO</span><div><strong>Lorenzo</strong><small>Video Editor & AMV Creator</small></div></div></aside></div>}
 
       {searchOpen && <div className="command-overlay" onMouseDown={() => setSearchOpen(false)}><div className="command-palette" onMouseDown={(event) => event.stopPropagation()}><div className="command-input"><Search /><input ref={searchRef} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Busque edits, presets, efeitos ou criadores..." /><kbd>ESC</kbd></div><div className="command-results"><span className="command-label">Resultados rápidos</span>{filteredProjects.slice(0, 4).map((project) => <button key={project.id} onClick={() => { openProject(project); setSearchOpen(false) }}><div className={`mini-thumb ${project.accent}`}><Play /></div><div><strong>{project.title}</strong><small>{project.category} · {project.author}</small></div><ArrowRight /></button>)}{filteredProjects.length === 0 && <EmptyState icon={<Search />} title="Nenhum resultado" text="Tente buscar outro título, categoria ou tag." />}</div></div></div>}
 
       <div id="main-content">
-      {view === 'home' && <HomeView loading={loading} navigate={navigate} openProject={openProject} favorites={favorites} toggleFavorite={toggleFavorite} />}
+      {view === 'home' && <HomeView loading={loading} openProject={openProject} favorites={favorites} toggleFavorite={toggleFavorite} scrollTo={scrollTo} />}
       {view === 'repository' && <RepositoryView loading={loading} projects={filteredProjects} search={search} setSearch={setSearch} category={category} setCategory={setCategory} openProject={openProject} favorites={favorites} toggleFavorite={toggleFavorite} />}
       {view === 'project' && <ProjectView project={selectedProject} onBack={() => navigate('repository')} openProject={openProject} favorite={favorites.has(selectedProject.id)} toggleFavorite={toggleFavorite} notify={notify} />}
       {view === 'profile' && <ProfileView openProject={openProject} favorites={favorites} toggleFavorite={toggleFavorite} />}
@@ -162,36 +163,38 @@ function App() {
       {view === 'favorites' && <FavoritesView favorites={favorites} openProject={openProject} toggleFavorite={toggleFavorite} />}
       </div>
 
-      <MusicPlayer audioRef={audioRef} isPlaying={isPlaying} isMuted={isMuted} volume={volume} currentTime={currentTime} duration={duration} expanded={playerExpanded} setExpanded={setPlayerExpanded} togglePlayback={togglePlayback} setMuted={() => { if (!audioRef.current) return; audioRef.current.muted = !audioRef.current.muted; setIsMuted(audioRef.current.muted) }} setVolume={(value) => { if (!audioRef.current) return; audioRef.current.volume = value; audioRef.current.muted = value === 0; setVolume(value); setIsMuted(value === 0) }} seek={(value) => { if (!audioRef.current) return; audioRef.current.currentTime = value; setCurrentTime(value) }} />
+      {view === 'home' && <MusicPlayer audioRef={audioRef} isPlaying={isPlaying} isMuted={isMuted} volume={volume} currentTime={currentTime} duration={duration} expanded={playerExpanded} setExpanded={setPlayerExpanded} togglePlayback={togglePlayback} setMuted={() => { if (!audioRef.current) return; audioRef.current.muted = !audioRef.current.muted; setIsMuted(audioRef.current.muted) }} setVolume={(value) => { if (!audioRef.current) return; audioRef.current.volume = value; audioRef.current.muted = value === 0; setVolume(value); setIsMuted(value === 0) }} seek={(value) => { if (!audioRef.current) return; audioRef.current.currentTime = value; setCurrentTime(value) }} />}
       <div className="toast-stack" aria-live="polite">{toasts.map((toast) => <div key={toast.id} className={`toast ${toast.tone}`}><Check />{toast.message}</div>)}</div>
     </main>
   )
 }
 
-function HomeView({ loading, navigate, openProject, favorites, toggleFavorite }: { loading: boolean; navigate: (view: View) => void; openProject: (project: Project) => void; favorites: Set<number>; toggleFavorite: (id: number) => void }) {
+function HomeView({ loading, openProject, favorites, toggleFavorite, scrollTo }: { loading: boolean; openProject: (project: Project) => void; favorites: Set<number>; toggleFavorite: (id: number) => void; scrollTo: (target: string) => void }) {
   return <>
-    <section className="hero-platform">
+    <section className="hero-platform portfolio-hero" id="top">
       <div className="hero-grid" /><div className="hero-orb" />
       <div className="hero-content">
-        <div className="hero-badge"><Sparkles /> A nova casa dos editores <span>2026</span></div>
+        <div className="hero-badge"><Sparkles /> Video Editor & AMV Creator <span>2026</span></div>
         <h1 className="kinetic-title" aria-label="Crie edits que ninguém esquece.">
           <span className="title-line" aria-hidden="true">{['Crie', 'edits', 'que'].map((word, index) => <span className="title-word" style={{ '--word-index': index } as CSSProperties} key={word}><span>{word}</span></span>)}</span>
           <span className="title-line accent-line" aria-hidden="true">{['ninguém', 'esquece.'].map((word, index) => <span className="title-word" style={{ '--word-index': index + 3 } as CSSProperties} key={word}><span>{word}</span></span>)}</span>
         </h1>
-        <p>Descubra projetos, presets e recursos premium feitos por uma comunidade obcecada por movimento, ritmo e impacto.</p>
-        <div className="hero-actions"><button className="button primary" onClick={() => navigate('repository')}>Explorar repositório <ArrowRight /></button><button className="button secondary" onClick={() => navigate('upload')}><CloudUpload /> Publicar projeto</button></div>
-        <div className="hero-proof"><div className="avatar-stack"><span>LO</span><span>AK</span><span>MK</span><span>+</span></div><div><strong>+12 mil criadores</strong><small>compartilhando recursos todos os dias</small></div></div>
+        <div className="hero-intro"><strong>Video Editor & AMV Creator</strong><p>Transformo cenas, música e movimento em edits que contam histórias.</p></div>
+        <div className="hero-actions"><button className="button primary" onClick={() => scrollTo('work')}>Ver meus trabalhos <ArrowDown /></button><button className="button secondary" onClick={() => scrollTo('contact')}>Entrar em contato <ArrowRight /></button></div>
+        <div className="hero-signature"><span>LO</span><div><strong>Lorenzo</strong><small>Motion · AMV · Video Editing</small></div></div>
       </div>
       <div className="hero-showcase">
-        <div className="showcase-window"><div className="window-bar"><i /><i /><i /><span>composition_01.aep</span></div><div className="showcase-canvas"><div className="anime-silhouette"><span>01</span><strong>IMPACT<br />FRAME</strong></div><button className="showcase-play"><Play fill="currentColor" /></button><div className="timeline"><div className="timeline-head"><span>00:00:18:24</span><span>4K · 60 FPS</span></div>{[84, 62, 73].map((width, index) => <div className="track" key={width}><span>{index === 0 ? 'VIDEO' : index === 1 ? 'EFFECTS' : 'AUDIO'}</span><i style={{ width: `${width}%` }} /></div>)}</div></div></div>
-        <div className="floating-chip chip-one"><TrendingUp /><span><small>Downloads hoje</small><strong>2.8K</strong></span></div><div className="floating-chip chip-two"><Users /><span><small>Online agora</small><strong>847</strong></span></div>
+        <div className="showcase-window"><div className="window-bar"><i /><i /><i /><span>lorenzo_showreel_2026.aep</span></div><div className="showcase-canvas"><div className="anime-silhouette"><span>SHOWREEL / 01</span><strong>MOTION<br />STORY</strong></div><button className="showcase-play" aria-label="Assistir showreel"><Play fill="currentColor" /></button><div className="timeline"><div className="timeline-head"><span>00:00:18:24</span><span>4K · 60 FPS</span></div>{[84, 62, 73].map((width, index) => <div className="track" key={width}><span>{index === 0 ? 'VIDEO' : index === 1 ? 'EFFECTS' : 'AUDIO'}</span><i style={{ width: `${width}%` }} /></div>)}</div></div></div>
+        <div className="floating-chip chip-one"><Play /><span><small>Showreel</small><strong>01:24</strong></span></div><div className="floating-chip chip-two"><Sparkles /><span><small>Experiência</small><strong>5+ anos</strong></span></div>
       </div>
-      <button className="scroll-cue" onClick={() => document.querySelector('#featured')?.scrollIntoView({ behavior: 'smooth' })}><span>Role para descobrir</span><ArrowDown /></button>
+      <button className="scroll-cue" onClick={() => scrollTo('work')}><span>Ver portfólio</span><ArrowDown /></button>
     </section>
-    <section className="trust-strip"><span>RECURSOS PARA</span>{['AFTER EFFECTS', 'PREMIERE PRO', 'DAVINCI RESOLVE', 'CAPCUT', 'ALIGHT MOTION'].map((tool) => <strong key={tool}>{tool}</strong>)}</section>
-    <section className="section" id="featured"><Reveal><SectionTitle eyebrow="Em alta agora" title="Escolhas da comunidade" text="Os projetos mais vistos, salvos e baixados nesta semana." action={<button className="text-button" onClick={() => navigate('repository')}>Ver tudo <ArrowRight /></button>} /></Reveal><div className="project-grid-new">{(loading ? projects.slice(0, 3) : projects.slice(0, 3)).map((project, index) => loading ? <ProjectSkeleton key={project.id} /> : <Reveal key={project.id} delay={index * 90}><ProjectCard project={project} openProject={openProject} favorite={favorites.has(project.id)} toggleFavorite={toggleFavorite} /></Reveal>)}</div></section>
-    <section className="section categories-section"><Reveal><SectionTitle eyebrow="Feito para criar" title="Tudo para o seu próximo edit" text="Navegue por uma biblioteca curada para acelerar cada parte do processo criativo." /></Reveal><div className="category-grid">{categories.slice(1, 7).map((item, index) => <Reveal key={item} delay={index * 55}><button className="category-card" onClick={() => navigate('repository')}><span>{String(index + 1).padStart(2, '0')}</span><div><strong>{item}</strong><small>{18 + index * 7} recursos</small></div><ArrowRight /></button></Reveal>)}</div></section>
-    <section className="creator-cta section"><Reveal><div className="creator-panel"><div><span className="section-kicker">Para criadores</span><h2>Seu talento merece<br />mais alcance.</h2><p>Publique projetos, construa uma audiência e acompanhe o crescimento do seu portfólio.</p><button className="button light" onClick={() => navigate('upload')}>Começar a publicar <ArrowRight /></button></div><div className="creator-metrics">{editorStats.map((stat) => <div key={stat.label}><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.delta}</small></div>)}</div></div></Reveal></section>
+    <section className="trust-strip"><span>ESPECIALIDADES</span>{['AMV', 'ANIME EDIT', 'MOTION DESIGN', 'MUSIC VIDEO', 'SHORT EDIT'].map((tool) => <strong key={tool}>{tool}</strong>)}</section>
+    <section className="section portfolio-work" id="work"><Reveal><SectionTitle eyebrow="Portfólio selecionado" title="Meus trabalhos" text="Projetos construídos frame a frame, unindo narrativa, ritmo e direção visual." /></Reveal><div className="project-grid-new portfolio-grid">{projects.map((project, index) => loading ? <ProjectSkeleton key={project.id} /> : <Reveal key={project.id} delay={(index % 3) * 90}><ProjectCard project={project} openProject={openProject} favorite={favorites.has(project.id)} toggleFavorite={toggleFavorite} /></Reveal>)}</div></section>
+    <section className="section featured-work" id="featured-project"><Reveal><div className="featured-layout"><div className="featured-visual cyan"><div className="thumb-grid"/><span>DIRECTOR'S CUT / 2026</span><strong>BLUE<br/>LOCK</strong><button onClick={() => openProject(projects[0])}><Play fill="currentColor" /></button></div><div className="featured-copy"><span className="section-kicker">Projeto em destaque</span><h2>Blue Lock — Ego</h2><p>Uma peça autoral de ritmo intenso que combina composição, transições, sound design e color grading para transformar cada cena em impacto.</p><div className="software-tags"><span>After Effects</span><span>Premiere Pro</span><span>Photoshop</span></div><button className="button primary" onClick={() => openProject(projects[0])}>Ver projeto <ArrowRight /></button></div></div></Reveal></section>
+    <section className="section about-portfolio" id="about"><Reveal><div className="about-layout"><div><span className="section-kicker">Sobre mim</span><h2>Eu edito para<br/><em>fazer sentir.</em></h2></div><div className="about-text"><p>Sou Lorenzo, editor de vídeo focado em AMVs, anime edits e motion design. Meu trabalho combina precisão técnica com uma direção visual autoral.</p><p>Crio narrativas onde música, timing e imagem trabalham juntos para transformar cenas em experiências memoráveis.</p><div className="about-facts"><span><strong>05+</strong> anos criando</span><span><strong>24</strong> projetos autorais</span><span><strong>4K</strong> workflow</span></div></div></div></Reveal></section>
+    <section className="section software-section"><Reveal><SectionTitle eyebrow="Workflow" title="Ferramentas que uso" text="Um processo profissional do primeiro corte ao último frame." /></Reveal><div className="software-grid">{[['Ae','After Effects','Motion & compositing'],['Pr','Premiere Pro','Editing & rhythm'],['Ps','Photoshop','Art direction'],['Da','DaVinci Resolve','Color grading']].map(([icon,name,skill],index)=><Reveal key={name} delay={index*70}><div className="software-card"><span>{icon}</span><div><strong>{name}</strong><small>{skill}</small></div><ArrowRight /></div></Reveal>)}</div></section>
+    <section className="section contact-portfolio" id="contact"><Reveal><div className="contact-panel"><span className="section-kicker">Disponível para novos projetos</span><h2>Vamos criar algo<br/><em>incrível.</em></h2><p>Tem uma ideia, música ou história esperando para ganhar movimento?</p><a className="button light" href="mailto:contato@exemplo.com">Entrar em contato <ArrowRight /></a><div className="contact-socials"><a href="#">Instagram</a><a href="#">YouTube</a><a href="#">Vimeo</a></div></div></Reveal></section>
   </>
 }
 
@@ -200,7 +203,7 @@ function RepositoryView({ loading, projects: items, search, setSearch, category,
 }
 
 function ProjectCard({ project, openProject, favorite, toggleFavorite }: { project: Project; openProject: (project: Project) => void; favorite: boolean; toggleFavorite: (id: number) => void }) {
-  return <article className="project-card"><button className={`project-thumb ${project.accent}`} onClick={() => openProject(project)}><div className="thumb-grid" /><span className="thumb-index">0{project.id}</span><strong>{project.title.split('—')[0]}</strong><div className="preview-overlay"><span><Play fill="currentColor" /> Preview</span></div><span className="duration">{project.duration}</span></button><div className="card-body"><div className="card-title-row"><button onClick={() => openProject(project)}><h3>{project.title}</h3></button><button className={`favorite-button ${favorite ? 'active' : ''}`} onClick={() => toggleFavorite(project.id)} aria-label="Favoritar projeto"><Heart fill={favorite ? 'currentColor' : 'none'} /></button></div><div className="author-row"><span className="avatar">{project.avatar}</span><div><strong>{project.author}</strong><small>{project.handle}</small></div></div><div className="tag-row">{project.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><div className="card-footer"><span><Eye /> {project.views}</span><span><Download /> {project.downloads}</span><span>{project.date}</span></div></div></article>
+  return <article className="project-card portfolio-card"><button className={`project-thumb ${project.accent}`} onClick={() => openProject(project)}><div className="thumb-grid" /><span className="thumb-index">0{project.id}</span><strong>{project.title.split('—')[0]}</strong><div className="preview-overlay"><span><Play fill="currentColor" /> Assistir</span></div><span className="duration">{project.duration}</span></button><div className="card-body"><div className="card-title-row"><button onClick={() => openProject(project)}><h3>{project.title}</h3></button><button className={`favorite-button ${favorite ? 'active' : ''}`} onClick={() => toggleFavorite(project.id)} aria-label="Favoritar projeto"><Heart fill={favorite ? 'currentColor' : 'none'} /></button></div><div className="portfolio-meta"><span>{project.category}</span><span>{project.date}</span></div><p className="card-description">{project.description}</p><div className="tag-row">{project.tags.slice(0,2).map((tag) => <span key={tag}>{tag}</span>)}</div></div></article>
 }
 
 function ProjectView({ project, onBack, openProject, favorite, toggleFavorite, notify }: { project: Project; onBack: () => void; openProject: (project: Project) => void; favorite: boolean; toggleFavorite: (id: number) => void; notify: (message: string, tone?: Toast['tone']) => void }) {

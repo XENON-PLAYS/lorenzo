@@ -1,4 +1,4 @@
-export type Category = 'Todos' | 'AMV' | 'Anime Edit' | 'Velocity' | 'Presets' | 'Effects' | 'Overlays' | 'Transitions' | 'CC' | 'Templates' | 'Projects'
+export type Category = 'Todos' | 'AMV' | 'Anime Edit' | 'Velocity' | 'Motion Design' | 'Music Video' | 'Short Edit'
 
 export type Project = {
   id: number
@@ -16,15 +16,15 @@ export type Project = {
   description: string
 }
 
-export const categories: Category[] = ['Todos', 'AMV', 'Anime Edit', 'Velocity', 'Presets', 'Effects', 'Overlays', 'Transitions', 'CC', 'Templates', 'Projects']
+export const categories: Category[] = ['Todos', 'AMV', 'Anime Edit', 'Velocity', 'Motion Design', 'Music Video', 'Short Edit']
 
 export const projects: Project[] = [
-  { id: 1, title: 'Blue Lock — Ego', category: 'AMV', author: 'Lorenzo', handle: '@lorenzo.edits', avatar: 'LO', tags: ['After Effects', '4K', 'AMV'], views: '48.2K', downloads: '8.4K', date: 'Hoje', duration: '00:42', accent: 'cyan', description: 'Um edit cinemático criado para explorar ritmo, impacto e a energia visual de Blue Lock.' },
-  { id: 2, title: 'Velocity Flow Pack', category: 'Presets', author: 'Mika', handle: '@mikaflow', avatar: 'MK', tags: ['Velocity', 'Premiere', 'Pack'], views: '31.7K', downloads: '12.1K', date: '2 dias', duration: '01:18', accent: 'violet', description: 'Presets de velocity suaves, responsivos e prontos para acelerar seu fluxo criativo.' },
-  { id: 3, title: 'Jujutsu — Hollow Blue', category: 'Anime Edit', author: 'Akira', handle: '@akira.mov', avatar: 'AK', tags: ['Anime', 'Glow', 'Shake'], views: '72.9K', downloads: '6.8K', date: '4 dias', duration: '00:31', accent: 'blue', description: 'Energia amaldiçoada, composição precisa e transições construídas frame a frame.' },
-  { id: 4, title: 'Chromatic Overlays', category: 'Overlays', author: 'Noir', handle: '@noir.vfx', avatar: 'NR', tags: ['Overlay', 'RGB', 'VFX'], views: '19.4K', downloads: '9.2K', date: '1 semana', duration: '00:58', accent: 'rose', description: 'Coleção de overlays cromáticos para adicionar profundidade e energia sem perder definição.' },
-  { id: 5, title: 'Chainsaw Impact', category: 'Effects', author: 'Lorenzo', handle: '@lorenzo.edits', avatar: 'LO', tags: ['Impact', 'SFX', 'Motion'], views: '55.8K', downloads: '11.6K', date: '1 semana', duration: '00:27', accent: 'orange', description: 'Impact frames, distorção e sound design sincronizados para edits de alta intensidade.' },
-  { id: 6, title: 'Midnight CC', category: 'CC', author: 'Yumi', handle: '@yumi.colors', avatar: 'YU', tags: ['Color', 'Night', 'Preset'], views: '26.3K', downloads: '7.9K', date: '2 semanas', duration: '00:36', accent: 'indigo', description: 'Color correction fria com contraste cinematográfico para cenas noturnas e dramáticas.' },
+  { id: 1, title: 'Blue Lock — Ego', category: 'AMV', author: 'Lorenzo', handle: '@lorenzo.edits', avatar: 'LO', tags: ['After Effects', '4K', 'AMV'], views: '48.2K', downloads: '8.4K', date: '2026', duration: '00:42', accent: 'cyan', description: 'Um edit cinemático criado para explorar ritmo, impacto e a energia visual de Blue Lock.' },
+  { id: 2, title: 'Velocity — Flow State', category: 'Velocity', author: 'Lorenzo', handle: '@lorenzo.edits', avatar: 'LO', tags: ['Velocity', 'Premiere', 'Rhythm'], views: '31.7K', downloads: '12.1K', date: '2026', duration: '01:18', accent: 'violet', description: 'Um estudo de velocidade e transições suaves guiado pela batida e pelo movimento.' },
+  { id: 3, title: 'Jujutsu — Hollow Blue', category: 'Anime Edit', author: 'Lorenzo', handle: '@lorenzo.edits', avatar: 'LO', tags: ['Anime', 'Glow', 'Shake'], views: '72.9K', downloads: '6.8K', date: '2026', duration: '00:31', accent: 'blue', description: 'Energia amaldiçoada, composição precisa e transições construídas frame a frame.' },
+  { id: 4, title: 'Neon Memories', category: 'Music Video', author: 'Lorenzo', handle: '@lorenzo.edits', avatar: 'LO', tags: ['Music', 'RGB', 'Narrative'], views: '19.4K', downloads: '9.2K', date: '2025', duration: '00:58', accent: 'rose', description: 'Narrativa musical com atmosfera noturna, textura analógica e composição cromática.' },
+  { id: 5, title: 'Chainsaw — Impact', category: 'Motion Design', author: 'Lorenzo', handle: '@lorenzo.edits', avatar: 'LO', tags: ['Impact', 'SFX', 'Motion'], views: '55.8K', downloads: '11.6K', date: '2025', duration: '00:27', accent: 'orange', description: 'Impact frames, distorção e sound design sincronizados para um edit de alta intensidade.' },
+  { id: 6, title: 'Midnight Sequence', category: 'Short Edit', author: 'Lorenzo', handle: '@lorenzo.edits', avatar: 'LO', tags: ['Color', 'Night', 'Short'], views: '26.3K', downloads: '7.9K', date: '2025', duration: '00:36', accent: 'indigo', description: 'Um short edit frio e cinematográfico com foco em atmosfera, textura e precisão.' },
 ]
 
 export const editorStats = [
