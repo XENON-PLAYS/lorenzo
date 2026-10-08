@@ -4,6 +4,7 @@ import {
   ChevronRight, Clapperboard, Clock3, CloudUpload, Command, Download, Eye, FileArchive, FolderHeart,
   Grid2X2, Heart, Home, Layers3, ListFilter, ListMusic, Menu, MoreHorizontal, Pause, Play, Search,
   Share2, SlidersHorizontal, Sparkles, Star, TrendingUp, Upload, UserRound, Users, Volume2, VolumeX, X,
+  Code2, Database, Palette, Wrench, Rocket, CircleDot, CalendarDays, ExternalLink,
 } from 'lucide-react'
 import { EmptyState, Reveal, Skeleton } from './components'
 import { categories, editorStats, projects, type Category, type Project } from './data'
@@ -29,6 +30,7 @@ function App() {
   const [favorites, setFavorites] = useState<Set<number>>(new Set([2]))
   const [toasts, setToasts] = useState<Toast[]>([])
   const [scrolled, setScrolled] = useState(false)
+  const [activeSection, setActiveSection] = useState('top')
   const [loading, setLoading] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
@@ -41,12 +43,39 @@ function App() {
   const [dragging, setDragging] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  const cursorRef = useRef<HTMLDivElement>(null)
+  const cursorDotRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setLoading(false), 850)
-    const onScroll = () => setScrolled(window.scrollY > 24)
+    const onScroll = () => {
+      setScrolled(window.scrollY > 24)
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight
+      document.documentElement.style.setProperty('--page-progress', `${scrollable > 0 ? window.scrollY / scrollable : 0}`)
+    }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => { window.clearTimeout(timer); window.removeEventListener('scroll', onScroll) }
+  }, [])
+
+  useEffect(() => {
+    if (!window.matchMedia('(pointer:fine)').matches) return
+    let x = 0
+    let y = 0
+    let trailX = 0
+    let trailY = 0
+    let frame = 0
+    const move = (event: MouseEvent) => {
+      x = event.clientX; y = event.clientY
+      if (cursorDotRef.current) cursorDotRef.current.style.transform = `translate3d(${x}px,${y}px,0)`
+    }
+    const render = () => {
+      trailX += (x - trailX) * .16; trailY += (y - trailY) * .16
+      if (cursorRef.current) cursorRef.current.style.transform = `translate3d(${trailX}px,${trailY}px,0)`
+      frame = requestAnimationFrame(render)
+    }
+    window.addEventListener('mousemove', move)
+    frame = requestAnimationFrame(render)
+    return () => { window.removeEventListener('mousemove', move); cancelAnimationFrame(frame) }
   }, [])
 
   useEffect(() => {
@@ -122,6 +151,8 @@ function App() {
     { label: 'Início', icon: Home, target: 'top' },
     { label: 'Trabalhos', icon: Grid2X2, target: 'work' },
     { label: 'Destaque', icon: Star, target: 'featured-project' },
+    { label: 'Skills', icon: Code2, target: 'skills' },
+    { label: 'Experiência', icon: Rocket, target: 'experience' },
     { label: 'Sobre', icon: UserRound, target: 'about' },
     { label: 'Contato', icon: ArrowRight, target: 'contact' },
   ]
@@ -131,8 +162,21 @@ function App() {
     setMenuOpen(false)
   }
 
+  useEffect(() => {
+    if (view !== 'home') return
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) setActiveSection(entry.target.id)
+      })
+    }, { rootMargin: '-42% 0px -48% 0px' })
+    navItems.forEach((item) => { const section = document.getElementById(item.target); if (section) observer.observe(section) })
+    return () => observer.disconnect()
+  }, [view])
+
   return (
     <main className="app-shell">
+      <div className="scroll-progress" aria-hidden="true" />
+      <div className="custom-cursor" ref={cursorRef} aria-hidden="true" /><div className="cursor-point" ref={cursorDotRef} aria-hidden="true" />
       <audio ref={audioRef} src={tracks[0].src} preload="metadata" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)} />
       <div className="animated-background" aria-hidden="true">
         <div className="galaxy-nebula nebula-one" /><div className="galaxy-nebula nebula-two" /><div className="galaxy-nebula nebula-three" />
@@ -145,7 +189,7 @@ function App() {
       <header className={`topbar ${scrolled ? 'is-scrolled' : ''}`}>
         <button className="logo" onClick={() => navigate('home')} aria-label="Ir para início"><span><Clapperboard /></span>LORENZO<span>.</span></button>
         <nav className="desktop-nav" aria-label="Navegação principal">
-          {navItems.map((item) => <button key={item.label} onClick={() => { navigate('home'); window.setTimeout(() => scrollTo(item.target), 60) }}>{item.label}</button>)}
+          {navItems.map((item) => <button key={item.label} className={activeSection === item.target ? 'active' : ''} onClick={() => { navigate('home'); window.setTimeout(() => scrollTo(item.target), 60) }}>{item.label}</button>)}
         </nav>
         <div className="nav-actions portfolio-actions">
           <button className="availability"><i /> Disponível para projetos</button>
@@ -178,7 +222,7 @@ function HomeView({ loading, openProject, favorites, toggleFavorite, scrollTo }:
   return <>
     <section className="hero-platform portfolio-hero" id="top">
       <div className="hero-grid" /><div className="hero-orb" />
-      <div className="hero-content">
+      <div className="hero-content" onMouseMove={(event) => { const bounds = event.currentTarget.getBoundingClientRect(); event.currentTarget.style.setProperty('--mx', `${(event.clientX - bounds.left) / bounds.width * 100}%`); event.currentTarget.style.setProperty('--my', `${(event.clientY - bounds.top) / bounds.height * 100}%`) }}>
         <div className="hero-badge"><Sparkles /> Video Editor & AMV Creator <span>2026</span></div>
         <h1 className="kinetic-title" aria-label="Crie edits que ninguém esquece.">
           <span className="title-line title-line-primary" aria-hidden="true"><span className="title-word" style={{ '--word-index': 0 } as CSSProperties}><span>Crie edits que</span></span></span>
@@ -189,7 +233,7 @@ function HomeView({ loading, openProject, favorites, toggleFavorite, scrollTo }:
         <div className="hero-signature"><span>LO</span><div><strong>Lorenzo</strong><small>Motion · AMV · Video Editing</small></div></div>
       </div>
       <div className="hero-showcase">
-        <div className="showcase-window"><div className="window-bar"><i /><i /><i /><span>lorenzo_showreel_2026.aep</span></div><div className="showcase-canvas"><div className="anime-silhouette"><span>SHOWREEL / 01</span><strong>MOTION<br />STORY</strong></div><button className="showcase-play" aria-label="Assistir showreel"><Play fill="currentColor" /></button><div className="timeline"><div className="timeline-head"><span>00:00:18:24</span><span>4K · 60 FPS</span></div>{[84, 62, 73].map((width, index) => <div className="track" key={width}><span>{index === 0 ? 'VIDEO' : index === 1 ? 'EFFECTS' : 'AUDIO'}</span><i style={{ width: `${width}%` }} /></div>)}</div></div></div>
+        <div className="showcase-window"><div className="window-bar"><i /><i /><i /><span>lorenzo_showreel_2026.aep</span></div><div className="showcase-canvas"><div className="anime-silhouette"><span>SHOWREEL / 01</span><strong>MOTION<br />STORY</strong></div><button className="showcase-play" aria-label="Assistir showreel" type="button"><Play fill="currentColor" /></button><div className="timeline"><div className="timeline-head"><span>00:00:18:24</span><span>4K · 60 FPS</span></div>{[84, 62, 73].map((width, index) => <div className="track" key={width}><span>{index === 0 ? 'VIDEO' : index === 1 ? 'EFFECTS' : 'AUDIO'}</span><i style={{ width: `${width}%` }} /></div>)}</div></div></div>
         <div className="floating-chip chip-one"><Play /><span><small>Showreel</small><strong>01:24</strong></span></div><div className="floating-chip chip-two"><Sparkles /><span><small>Experiência</small><strong>5+ anos</strong></span></div>
       </div>
       <button className="scroll-cue" onClick={() => scrollTo('work')}><span>Ver portfólio</span><ArrowDown /></button>
@@ -200,10 +244,21 @@ function HomeView({ loading, openProject, favorites, toggleFavorite, scrollTo }:
       </div>
     </section>
     <section className="section portfolio-work" id="work"><Reveal><SectionTitle eyebrow="Portfólio selecionado" title="Meus trabalhos" text="Projetos construídos frame a frame, unindo narrativa, ritmo e direção visual." /></Reveal><div className="project-grid-new portfolio-grid">{projects.map((project, index) => loading ? <ProjectSkeleton key={project.id} /> : <Reveal key={project.id} delay={(index % 3) * 90}><ProjectCard project={project} openProject={openProject} favorite={favorites.has(project.id)} toggleFavorite={toggleFavorite} /></Reveal>)}</div></section>
-    <section className="section featured-work" id="featured-project"><Reveal><div className="featured-layout"><div className="featured-visual cyan"><div className="thumb-grid"/><span>DIRECTOR'S CUT / 2026</span><strong>BLUE<br/>LOCK</strong><button onClick={() => openProject(projects[0])}><Play fill="currentColor" /></button></div><div className="featured-copy"><span className="section-kicker">Projeto em destaque</span><h2>Blue Lock — Ego</h2><p>Uma peça autoral de ritmo intenso que combina composição, transições, sound design e color grading para transformar cada cena em impacto.</p><div className="software-tags"><span>After Effects</span><span>Premiere Pro</span><span>Photoshop</span></div><button className="button primary" onClick={() => openProject(projects[0])}>Ver projeto <ArrowRight /></button></div></div></Reveal></section>
-    <section className="section about-portfolio" id="about"><Reveal><div className="about-layout"><div><span className="section-kicker">Sobre mim</span><h2>Eu edito para<br/><em>fazer sentir.</em></h2></div><div className="about-text"><p>Sou Lorenzo, editor de vídeo focado em AMVs, anime edits e motion design. Meu trabalho combina precisão técnica com uma direção visual autoral.</p><p>Crio narrativas onde música, timing e imagem trabalham juntos para transformar cenas em experiências memoráveis.</p><div className="about-facts"><span><strong>05+</strong> anos criando</span><span><strong>24</strong> projetos autorais</span><span><strong>4K</strong> workflow</span></div></div></div></Reveal></section>
+    <section className="section featured-work" id="featured-project"><Reveal><div className="featured-layout"><div className="featured-visual cyan"><div className="thumb-grid"/><span>DIRECTOR'S CUT / 2026</span><strong>BLUE<br/>LOCK</strong><button onClick={() => openProject(projects[0])} aria-label="Abrir projeto Blue Lock"><Play fill="currentColor" /></button></div><div className="featured-copy"><span className="section-kicker">Projeto em destaque</span><h2>Blue Lock — Ego</h2><p>Uma peça autoral de ritmo intenso que combina composição, transições, sound design e color grading para transformar cada cena em impacto.</p><div className="software-tags"><span>After Effects</span><span>Premiere Pro</span><span>Photoshop</span></div><button className="button primary" onClick={() => openProject(projects[0])}>Ver projeto <ArrowRight /></button></div></div></Reveal></section>
+    <section className="section skills-section" id="skills"><Reveal><SectionTitle eyebrow="Sistema criativo" title="Skills & tecnologias" text="Ferramentas e competências organizadas para entregar projetos do conceito à publicação." /></Reveal><div className="skills-grid">{[
+      { icon: <Palette />, title: 'Design & Motion', items: ['After Effects','Motion Design','Art Direction','UI Motion'] },
+      { icon: <Code2 />, title: 'Frontend', items: ['React','TypeScript','CSS','Responsive UI'] },
+      { icon: <Database />, title: 'Backend & Data', items: ['Supabase','REST APIs','Auth','Data Modeling'] },
+      { icon: <Wrench />, title: 'Tools', items: ['Premiere Pro','Photoshop','DaVinci','Git'] },
+    ].map((skill,index)=><Reveal key={skill.title} delay={index*70}><article className="skill-card"><span>{skill.icon}</span><div><small>0{index+1}</small><h3>{skill.title}</h3></div><ul>{skill.items.map(item=><li key={item}>{item}</li>)}</ul></article></Reveal>)}</div></section>
+    <section className="section experience-section" id="experience"><Reveal><SectionTitle eyebrow="Trajetória" title="Experiência em movimento" text="Uma evolução contínua entre edição, direção visual e desenvolvimento de experiências digitais." /></Reveal><div className="experience-timeline">{[
+      { period:'2025 — Agora', role:'Video Editor & Creative Developer', company:'Freelance / Lorenzo Studio', copy:'Direção e produção de AMVs, anime edits e experiências web autorais com foco em ritmo e narrativa.', tech:['After Effects','React','TypeScript'] },
+      { period:'2023 — 2025', role:'Motion Designer', company:'Projetos independentes', copy:'Desenvolvimento de identidade em movimento, composição, transições e sound design para conteúdo digital.', tech:['Motion','Premiere','Photoshop'] },
+      { period:'2021 — 2023', role:'Editor de Vídeo', company:'Creator projects', copy:'Fundamentos de montagem, color grading e linguagem audiovisual aplicados a formatos curtos.', tech:['Editing','Color','Storytelling'] },
+    ].map((item,index)=><Reveal key={item.period} delay={index*80}><article className="timeline-item"><div className="timeline-marker"><CircleDot /></div><span className="timeline-period"><CalendarDays />{item.period}</span><div className="timeline-copy"><small>{item.company}</small><h3>{item.role}</h3><p>{item.copy}</p><div>{item.tech.map(tag=><span key={tag}>{tag}</span>)}</div></div></article></Reveal>)}</div></section>
+    <section className="section about-portfolio" id="about"><Reveal><div className="about-layout"><div><span className="section-kicker">Sobre mim</span><h2>Eu edito para<br/><em>fazer sentir.</em></h2></div><div className="about-text"><p>Sou Lorenzo, editor de vídeo focado em AMVs, anime edits e motion design. Meu trabalho combina precisão técnica com uma direção visual autoral.</p><p>Crio narrativas onde música, timing e imagem trabalham juntos para transformar cenas em experiências memoráveis.</p><div className="about-facts"><span><strong>05+</strong> anos criando<small>experiência contínua</small></span><span><strong>24</strong> projetos autorais<small>do conceito à entrega</small></span><span><strong>4K</strong> workflow<small>qualidade profissional</small></span></div></div></div></Reveal></section>
     <section className="section software-section"><Reveal><SectionTitle eyebrow="Workflow" title="Ferramentas que uso" text="Um processo profissional do primeiro corte ao último frame." /></Reveal><div className="software-grid">{[['Ae','After Effects','Motion & compositing'],['Pr','Premiere Pro','Editing & rhythm'],['Ps','Photoshop','Art direction'],['Da','DaVinci Resolve','Color grading']].map(([icon,name,skill],index)=><Reveal key={name} delay={index*70}><div className="software-card"><span>{icon}</span><div><strong>{name}</strong><small>{skill}</small></div><ArrowRight /></div></Reveal>)}</div></section>
-    <section className="section contact-portfolio" id="contact"><Reveal><div className="contact-panel"><span className="section-kicker">Disponível para novos projetos</span><h2>Vamos criar algo<br/><em>incrível.</em></h2><p>Tem uma ideia, música ou história esperando para ganhar movimento?</p><a className="button light" href="mailto:contato@exemplo.com">Entrar em contato <ArrowRight /></a><div className="contact-socials"><a href="#">Instagram</a><a href="#">YouTube</a><a href="#">Vimeo</a></div></div></Reveal></section>
+    <section className="section contact-portfolio" id="contact"><Reveal><div className="contact-panel"><span className="section-kicker">Disponível para novos projetos</span><h2>Vamos criar algo<br/><em>incrível.</em></h2><p>Tem uma ideia, música ou história esperando para ganhar movimento?</p><a className="button light magnetic-button" href="mailto:contato@exemplo.com">Entrar em contato <ArrowRight /></a><div className="contact-details"><a href="mailto:contato@exemplo.com">contato@exemplo.com <ExternalLink /></a><span>São Paulo · Brasil</span></div><div className="contact-socials"><a href="#">Instagram</a><a href="#">YouTube</a><a href="#">Vimeo</a></div></div></Reveal></section>
   </>
 }
 
