@@ -181,8 +181,8 @@ function HomeView({ loading, openProject, favorites, toggleFavorite, scrollTo }:
       <div className="hero-content">
         <div className="hero-badge"><Sparkles /> Video Editor & AMV Creator <span>2026</span></div>
         <h1 className="kinetic-title" aria-label="Crie edits que ninguém esquece.">
-          <span className="title-line" aria-hidden="true">{['Crie', 'edits', 'que'].map((word, index) => <span className="title-word" style={{ '--word-index': index } as CSSProperties} key={word}><span>{word}</span></span>)}</span>
-          <span className="title-line accent-line" aria-hidden="true">{['ninguém', 'esquece.'].map((word, index) => <span className="title-word" style={{ '--word-index': index + 3 } as CSSProperties} key={word}><span>{word}</span></span>)}</span>
+          <span className="title-line title-line-primary" aria-hidden="true"><span className="title-word" style={{ '--word-index': 0 } as CSSProperties}><span>Crie edits que</span></span></span>
+          <span className="title-line accent-line" aria-hidden="true"><span className="title-word" style={{ '--word-index': 3 } as CSSProperties}><span>ninguém</span></span><span className="title-word" style={{ '--word-index': 4 } as CSSProperties}><span>esquece.</span></span></span>
         </h1>
         <div className="hero-intro"><strong>Video Editor & AMV Creator</strong><p>Transformo cenas, música e movimento em edits que contam histórias.</p></div>
         <div className="hero-actions"><button className="button primary" onClick={() => scrollTo('work')}>Ver meus trabalhos <ArrowDown /></button><button className="button secondary" onClick={() => scrollTo('contact')}>Entrar em contato <ArrowRight /></button></div>
