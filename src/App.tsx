@@ -134,6 +134,11 @@ function App() {
   return (
     <main className="app-shell">
       <audio ref={audioRef} src={tracks[0].src} preload="metadata" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)} />
+      <div className="animated-background" aria-hidden="true">
+        <div className="aurora aurora-one" /><div className="aurora aurora-two" /><div className="aurora aurora-three" />
+        <div className="light-wave wave-one" /><div className="light-wave wave-two" /><div className="light-wave wave-three" />
+        <div className="background-grid" /><div className="background-vignette" />
+      </div>
       <div className="ambient ambient-one" /><div className="ambient ambient-two" /><div className="grain" />
 
       <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
