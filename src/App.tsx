@@ -224,7 +224,7 @@ function HomeView({ loading, openProject, favorites, toggleFavorite, scrollTo }:
       <div className="hero-grid" /><div className="hero-orb" />
       <div className="hero-content" onMouseMove={(event) => { const bounds = event.currentTarget.getBoundingClientRect(); event.currentTarget.style.setProperty('--mx', `${(event.clientX - bounds.left) / bounds.width * 100}%`); event.currentTarget.style.setProperty('--my', `${(event.clientY - bounds.top) / bounds.height * 100}%`) }}>
         <div className="hero-badge"><Sparkles /> Video Editor & AMV Creator <span>2026</span></div>
-        <h1 className="kinetic-title" aria-label="Crie edits que ninguém esquece.">
+        <h1 className="kinetic-title" aria-label="CRIE EDITS QUE NINGUÉM ESQUECE">
           <span className="title-line title-line-primary" aria-hidden="true"><span className="title-word" style={{ '--word-index': 0 } as CSSProperties}><span>Crie edits que</span></span></span>
           <span className="title-line accent-line" aria-hidden="true"><span className="title-word" style={{ '--word-index': 3 } as CSSProperties}><span>ninguém</span></span><span className="title-word" style={{ '--word-index': 4 } as CSSProperties}><span>esquece.</span></span></span>
         </h1>
