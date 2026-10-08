@@ -133,7 +133,7 @@ function App() {
 
       <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
       <header className={`topbar ${scrolled ? 'is-scrolled' : ''}`}>
-        <button className="logo" onClick={() => navigate('home')} aria-label="Ir para início"><span><Clapperboard /></span>FRAME<span>LAB</span></button>
+        <button className="logo" onClick={() => navigate('home')} aria-label="Ir para início"><span><Clapperboard /></span>LORENZO<span>.</span></button>
         <nav className="desktop-nav" aria-label="Navegação principal">
           {navItems.map((item) => <button key={item.label} className={view === item.view ? 'active' : ''} onClick={() => navigate(item.view)}>{item.label}</button>)}
         </nav>
@@ -148,7 +148,7 @@ function App() {
         </div>
       </header>
 
-      {menuOpen && <div className="drawer-wrap"><button className="drawer-backdrop" onClick={() => setMenuOpen(false)} aria-label="Fechar menu" /><aside className="mobile-drawer"><div className="drawer-head"><div className="logo"><span><Clapperboard /></span>FRAMELAB</div><button className="icon-button" onClick={() => setMenuOpen(false)}><X /></button></div>{navItems.map((item) => <button key={item.label} onClick={() => navigate(item.view)}><item.icon />{item.label}<ArrowRight /></button>)}<div className="drawer-profile"><span>LO</span><div><strong>Lorenzo</strong><small>@lorenzo.edits</small></div></div></aside></div>}
+      {menuOpen && <div className="drawer-wrap"><button className="drawer-backdrop" onClick={() => setMenuOpen(false)} aria-label="Fechar menu" /><aside className="mobile-drawer"><div className="drawer-head"><div className="logo"><span><Clapperboard /></span>LORENZO<span>.</span></div><button className="icon-button" onClick={() => setMenuOpen(false)}><X /></button></div>{navItems.map((item) => <button key={item.label} onClick={() => navigate(item.view)}><item.icon />{item.label}<ArrowRight /></button>)}<div className="drawer-profile"><span>LO</span><div><strong>Lorenzo</strong><small>@lorenzo.edits</small></div></div></aside></div>}
 
       {searchOpen && <div className="command-overlay" onMouseDown={() => setSearchOpen(false)}><div className="command-palette" onMouseDown={(event) => event.stopPropagation()}><div className="command-input"><Search /><input ref={searchRef} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Busque edits, presets, efeitos ou criadores..." /><kbd>ESC</kbd></div><div className="command-results"><span className="command-label">Resultados rápidos</span>{filteredProjects.slice(0, 4).map((project) => <button key={project.id} onClick={() => { openProject(project); setSearchOpen(false) }}><div className={`mini-thumb ${project.accent}`}><Play /></div><div><strong>{project.title}</strong><small>{project.category} · {project.author}</small></div><ArrowRight /></button>)}{filteredProjects.length === 0 && <EmptyState icon={<Search />} title="Nenhum resultado" text="Tente buscar outro título, categoria ou tag." />}</div></div></div>}
 
@@ -174,7 +174,10 @@ function HomeView({ loading, navigate, openProject, favorites, toggleFavorite }:
       <div className="hero-grid" /><div className="hero-orb" />
       <div className="hero-content">
         <div className="hero-badge"><Sparkles /> A nova casa dos editores <span>2026</span></div>
-        <h1>Crie edits que<br /><em>ninguém esquece.</em></h1>
+        <h1 className="kinetic-title" aria-label="Crie edits que ninguém esquece.">
+          <span className="title-line" aria-hidden="true">{['Crie', 'edits', 'que'].map((word, index) => <span className="title-word" style={{ '--word-index': index } as CSSProperties} key={word}><span>{word}</span></span>)}</span>
+          <span className="title-line accent-line" aria-hidden="true">{['ninguém', 'esquece.'].map((word, index) => <span className="title-word" style={{ '--word-index': index + 3 } as CSSProperties} key={word}><span>{word}</span></span>)}</span>
+        </h1>
         <p>Descubra projetos, presets e recursos premium feitos por uma comunidade obcecada por movimento, ritmo e impacto.</p>
         <div className="hero-actions"><button className="button primary" onClick={() => navigate('repository')}>Explorar repositório <ArrowRight /></button><button className="button secondary" onClick={() => navigate('upload')}><CloudUpload /> Publicar projeto</button></div>
         <div className="hero-proof"><div className="avatar-stack"><span>LO</span><span>AK</span><span>MK</span><span>+</span></div><div><strong>+12 mil criadores</strong><small>compartilhando recursos todos os dias</small></div></div>
