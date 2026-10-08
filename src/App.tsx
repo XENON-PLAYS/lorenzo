@@ -135,10 +135,11 @@ function App() {
     <main className="app-shell">
       <audio ref={audioRef} src={tracks[0].src} preload="metadata" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)} />
       <div className="animated-background" aria-hidden="true">
-        <div className="aurora aurora-one" /><div className="aurora aurora-two" /><div className="aurora aurora-three" />
-        <div className="background-grid" /><div className="background-vignette" />
+        <div className="galaxy-nebula nebula-one" /><div className="galaxy-nebula nebula-two" /><div className="galaxy-nebula nebula-three" />
+        <div className="stars stars-small" /><div className="stars stars-medium" /><div className="stars stars-large" />
+        <div className="shooting-star shooting-one" /><div className="shooting-star shooting-two" />
+        <div className="background-vignette" />
       </div>
-      <div className="ambient ambient-one" /><div className="ambient ambient-two" /><div className="grain" />
 
       <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
       <header className={`topbar ${scrolled ? 'is-scrolled' : ''}`}>
