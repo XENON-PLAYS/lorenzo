@@ -136,7 +136,6 @@ function App() {
       <audio ref={audioRef} src={tracks[0].src} preload="metadata" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)} />
       <div className="animated-background" aria-hidden="true">
         <div className="aurora aurora-one" /><div className="aurora aurora-two" /><div className="aurora aurora-three" />
-        <div className="light-wave wave-one" /><div className="light-wave wave-two" /><div className="light-wave wave-three" />
         <div className="background-grid" /><div className="background-vignette" />
       </div>
       <div className="ambient ambient-one" /><div className="ambient ambient-two" /><div className="grain" />
@@ -208,7 +207,38 @@ function HomeView({ loading, openProject, favorites, toggleFavorite, scrollTo }:
 }
 
 function RepositoryView({ loading, projects: items, search, setSearch, category, setCategory, openProject, favorites, toggleFavorite }: { loading: boolean; projects: Project[]; search: string; setSearch: (value: string) => void; category: Category; setCategory: (value: Category) => void; openProject: (project: Project) => void; favorites: Set<number>; toggleFavorite: (id: number) => void }) {
-  return <section className="page repository-page"><div className="page-heading"><span className="section-kicker">Repositório</span><h1>Recursos para elevar<br />cada <em>frame.</em></h1><p>Explore uma biblioteca viva de projetos e assets criados por editores de todo o mundo.</p></div><div className="repository-toolbar"><label className="repository-search"><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por título, criador ou tag..." /><kbd>⌘ K</kbd></label><button className="sort-button"><ListFilter /> Mais relevantes <ChevronDown /></button></div><div className="filter-row" role="tablist">{categories.map((item) => <button key={item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div><div className="results-meta"><span><strong>{items.length}</strong> recursos encontrados</span><button><SlidersHorizontal /> Filtros avançados</button></div>{items.length ? <div className="project-grid-new repository-grid">{(loading ? projects.slice(0, 6) : items).map((project, index) => loading ? <ProjectSkeleton key={project.id} /> : <Reveal key={project.id} delay={(index % 3) * 60}><ProjectCard project={project} openProject={openProject} favorite={favorites.has(project.id)} toggleFavorite={toggleFavorite} /></Reveal>)}</div> : <EmptyState icon={<Search />} title="Nenhum recurso encontrado" text="Ajuste a busca ou selecione outra categoria." />}</section>
+  const [sortBy, setSortBy] = useState<'relevant' | 'views' | 'downloads' | 'recent'>('relevant')
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [year, setYear] = useState<'Todos' | '2026' | '2025'>('Todos')
+  const [software, setSoftware] = useState<'Todos' | 'After Effects' | 'Premiere'>('Todos')
+  const metric = (value: string) => Number.parseFloat(value) * (value.includes('K') ? 1000 : 1)
+  const visibleItems = [...items]
+    .filter((project) => year === 'Todos' || project.date === year)
+    .filter((project) => software === 'Todos' || project.tags.includes(software))
+    .sort((a, b) => {
+      if (sortBy === 'views') return metric(b.views) - metric(a.views)
+      if (sortBy === 'downloads') return metric(b.downloads) - metric(a.downloads)
+      if (sortBy === 'recent') return Number(b.date) - Number(a.date) || b.id - a.id
+      return b.id === 1 ? 1 : a.id === 1 ? -1 : metric(b.views) - metric(a.views)
+    })
+  const hasAdvancedFilters = year !== 'Todos' || software !== 'Todos'
+  const clearFilters = () => { setYear('Todos'); setSoftware('Todos'); setCategory('Todos'); setSearch('') }
+
+  return <section className="page repository-page">
+    <div className="page-heading"><span className="section-kicker">Repositório</span><h1>Recursos para elevar<br />cada <em>frame.</em></h1><p>Explore uma biblioteca viva de projetos e assets criados por editores de todo o mundo.</p></div>
+    <div className="repository-toolbar">
+      <label className="repository-search"><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por título, criador ou tag..." /><kbd>⌘ K</kbd></label>
+      <label className="sort-control"><ListFilter /><span>Ordenar</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value as typeof sortBy)} aria-label="Ordenar projetos"><option value="relevant">Mais relevantes</option><option value="views">Mais vistos</option><option value="downloads">Mais baixados</option><option value="recent">Mais recentes</option></select><ChevronDown /></label>
+    </div>
+    <div className="filter-row" role="tablist" aria-label="Filtrar por categoria">{categories.map((item) => <button role="tab" aria-selected={category === item} key={item} className={category === item ? 'active' : ''} onClick={() => setCategory(item)}>{item}</button>)}</div>
+    <div className="results-meta"><span><strong>{visibleItems.length}</strong> projetos encontrados</span><button className={`advanced-toggle ${advancedOpen ? 'active' : ''}`} onClick={() => setAdvancedOpen(!advancedOpen)} aria-expanded={advancedOpen}><SlidersHorizontal /> Filtros avançados {hasAdvancedFilters && <i>{[year !== 'Todos', software !== 'Todos'].filter(Boolean).length}</i>}<ChevronDown /></button></div>
+    {advancedOpen && <div className="advanced-filters">
+      <div><span>Ano</span><div>{(['Todos', '2026', '2025'] as const).map((item) => <button className={year === item ? 'active' : ''} onClick={() => setYear(item)} key={item}>{item}</button>)}</div></div>
+      <div><span>Software</span><div>{(['Todos', 'After Effects', 'Premiere'] as const).map((item) => <button className={software === item ? 'active' : ''} onClick={() => setSoftware(item)} key={item}>{item}</button>)}</div></div>
+      <button className="clear-filters" onClick={clearFilters} disabled={!hasAdvancedFilters && category === 'Todos' && !search}><X /> Limpar filtros</button>
+    </div>}
+    {visibleItems.length ? <div className="project-grid-new repository-grid">{(loading ? projects.slice(0, 6) : visibleItems).map((project, index) => loading ? <ProjectSkeleton key={project.id} /> : <Reveal key={project.id} delay={(index % 3) * 60}><ProjectCard project={project} openProject={openProject} favorite={favorites.has(project.id)} toggleFavorite={toggleFavorite} /></Reveal>)}</div> : <EmptyState icon={<Search />} title="Nenhum projeto encontrado" text="Ajuste os filtros ou limpe a busca para ver outros trabalhos." />}
+  </section>
 }
 
 function ProjectCard({ project, openProject, favorite, toggleFavorite }: { project: Project; openProject: (project: Project) => void; favorite: boolean; toggleFavorite: (id: number) => void }) {
